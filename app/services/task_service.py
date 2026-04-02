@@ -91,9 +91,10 @@ class TaskService:
             if context and context.get("last_referenced_task_ids"):
                 task_id = context["last_referenced_task_ids"][0]
                 return self.repository.get_task(task_id)
-        sanitized = text
-        for token in ["完了", "終わった", "消して", "削除", "キャンセル", "取り消し", "変更", "して", "変えて", "を"]:
+        sanitized = self.parser._normalize_text(text)
+        for token in ["完了", "終わった", "消して", "削除", "キャンセル", "取り消し", "変更", "して", "変えて", "を", "に", "の"]:
             sanitized = sanitized.replace(token, "")
+        sanitized = self.parser.clean_title(sanitized)
         candidates = self.repository.find_tasks(user_id, sanitized.strip())
         if len(candidates) == 1:
             return candidates[0]

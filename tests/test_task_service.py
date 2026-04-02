@@ -41,6 +41,13 @@ class TaskServiceTests(unittest.TestCase):
         self.assertEqual(result["task"].status, "completed")
         self.assertEqual(self.repository.get_task(create_result.task.id)["status"], "completed")
 
+    def test_delete_by_title_with_slack_mention(self):
+        create_result = self.service.parse_and_create(self.user_id, "slack", "room-1", "明日15時に歯医者", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "slack", "room-1", "<@U0AR9GMMTSL> 歯医者消して", "Asia/Tokyo")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["task"].status, "deleted")
+        self.assertEqual(self.repository.get_task(create_result.task.id)["status"], "deleted")
+
     def test_update_from_context(self):
         create_result = self.service.parse_and_create(self.user_id, "chat", "room-1", "4月5日15時に面談", "Asia/Tokyo")
         result = self.service.parse_and_create(self.user_id, "chat", "room-1", "それ16時にして", "Asia/Tokyo")
