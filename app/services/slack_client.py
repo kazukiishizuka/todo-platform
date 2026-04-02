@@ -20,7 +20,8 @@ class SlackClient:
         self.settings = settings
 
     def verify_signature(self, timestamp: str, signature: str, body: bytes) -> bool:
-        if not self.settings.slack_signing_secret:
+        signing_secret = (self.settings.slack_signing_secret or "").strip()
+        if not signing_secret:
             logger.warning("Slack signing secret is empty")
             return False
         if not timestamp or not signature:
@@ -30,10 +31,10 @@ class SlackClient:
             logger.warning("Slack request timestamp too old timestamp=%s", timestamp)
             return False
         basestring = f"v0:{timestamp}:{body.decode()}".encode()
-        digest = "v0=" + hmac.new(self.settings.slack_signing_secret.encode(), basestring, hashlib.sha256).hexdigest()
+        digest = "v0=" + hmac.new(signing_secret.encode(), basestring, hashlib.sha256).hexdigest()
         ok = hmac.compare_digest(digest, signature)
         if not ok:
-            logger.warning("Slack signature mismatch computed_prefix=%s provided_prefix=%s", digest[:16], signature[:16])
+            logger.warning("Slack signature mismatch computed_prefix=%s provided_prefix=%s secret_length=%s", digest[:16], signature[:16], len(signing_secret))
         return ok
 
     def post_message(self, channel_id: str, text: str, blocks: list[dict] | None = None) -> dict:
