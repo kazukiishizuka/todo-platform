@@ -1,0 +1,45 @@
+﻿import unittest
+from uuid import uuid4
+
+from app.repositories.memory import InMemoryTaskRepository
+from app.services.google_sync import GoogleSyncService
+from app.services.parser import NaturalLanguageParser
+from app.services.task_service import TaskService
+
+
+class TaskServiceTests(unittest.TestCase):
+    def setUp(self):
+        self.repository = InMemoryTaskRepository()
+        self.service = TaskService(self.repository, NaturalLanguageParser(), GoogleSyncService())
+        self.user_id = uuid4()
+
+    def test_create_task_and_queue_google_sync(self):
+        result = self.service.parse_and_create(self.user_id, "chat", "room-1", "4月5日15時に面談", "Asia/Tokyo")
+        self.assertEqual(result.status, "confirmed")
+        self.assertEqual(result.task.title, "面談")
+        self.assertEqual(result.googleSync["status"], "queued")
+        self.assertEqual(len(self.repository.sync_logs), 1)
+
+    def test_query_today_tasks(self):
+        self.service.parse_and_create(self.user_id, "chat", "room-1", "今日15時に面談", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "chat", "room-1", "今日のタスク教えて", "Asia/Tokyo")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(len(result["items"]), 1)
+
+    def test_complete_by_title(self):
+        create_result = self.service.parse_and_create(self.user_id, "chat", "room-1", "4月5日15時にレポート提出", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "chat", "room-1", "レポート提出完了", "Asia/Tokyo")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["task"].status, "completed")
+        self.assertEqual(self.repository.get_task(create_result.task.id)["status"], "completed")
+
+    def test_update_from_context(self):
+        create_result = self.service.parse_and_create(self.user_id, "chat", "room-1", "4月5日15時に面談", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "chat", "room-1", "それ16時にして", "Asia/Tokyo")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["task"].startDatetime.hour, 16)
+        self.assertEqual(self.repository.get_task(create_result.task.id)["start_datetime"].hour, 16)
+
+
+if __name__ == "__main__":
+    unittest.main()
