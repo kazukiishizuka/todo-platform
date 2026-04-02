@@ -6,6 +6,7 @@ import json
 import time
 import logging
 from urllib import request
+from urllib.error import HTTPError
 
 from app.config import Settings
 
@@ -45,5 +46,14 @@ class SlackClient:
         req = request.Request(self.POST_MESSAGE_URL, data=data, method="POST")
         req.add_header("Authorization", f"Bearer {self.settings.slack_bot_token}")
         req.add_header("Content-Type", "application/json; charset=utf-8")
-        with request.urlopen(req, timeout=15) as response:
-            return json.loads(response.read().decode())
+        try:
+            with request.urlopen(req, timeout=15) as response:
+                result = json.loads(response.read().decode())
+        except HTTPError as exc:
+            body = exc.read().decode(errors="replace")
+            logger.warning("Slack post_message HTTPError status=%s body=%s", exc.code, body)
+            raise
+        logger.info("Slack post_message response ok=%s channel=%s error=%s", result.get("ok"), channel_id, result.get("error"))
+        if not result.get("ok"):
+            raise RuntimeError(f"slack post_message failed: {result.get('error', 'unknown_error')}")
+        return result
