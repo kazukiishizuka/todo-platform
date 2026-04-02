@@ -48,6 +48,15 @@ class TaskServiceTests(unittest.TestCase):
         self.assertEqual(result["task"].status, "deleted")
         self.assertEqual(self.repository.get_task(create_result.task.id)["status"], "deleted")
 
+    def test_delete_by_title_removes_accidental_duplicates(self):
+        first = self.service.parse_and_create(self.user_id, "slack", "room-1", "明日15時に歯医者", "Asia/Tokyo")
+        second = self.service.parse_and_create(self.user_id, "slack", "room-1", "明日15時に歯医者", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "slack", "room-1", "歯医者消して", "Asia/Tokyo")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(self.repository.get_task(first.task.id)["status"], "deleted")
+        self.assertEqual(self.repository.get_task(second.task.id)["status"], "deleted")
+        self.assertIn("重複", result["message"])
+
     def test_update_from_context(self):
         create_result = self.service.parse_and_create(self.user_id, "chat", "room-1", "4月5日15時に面談", "Asia/Tokyo")
         result = self.service.parse_and_create(self.user_id, "chat", "room-1", "それ16時にして", "Asia/Tokyo")

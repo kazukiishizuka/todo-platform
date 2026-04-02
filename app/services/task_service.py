@@ -77,8 +77,10 @@ class TaskService:
             updated = self.complete_task(target["id"])
             return {"status": "ok", "task": self._to_response(updated), "message": f"{updated['title']} を完了にしました。"}
         if parsed.intent == "delete":
-            updated = self.delete_task(target["id"])
-            return {"status": "ok", "task": self._to_response(updated), "message": f"{updated['title']} を削除しました。"}
+            deleted_tasks = self.delete_matching_tasks(user_id, target)
+            updated = deleted_tasks[0]
+            suffix = f"（重複していた{len(deleted_tasks)}件をまとめて削除しました）" if len(deleted_tasks) > 1 else ""
+            return {"status": "ok", "task": self._to_response(updated), "message": f"{updated['title']} を削除しました。{suffix}"}
         if parsed.intent == "update":
             updates = self._extract_updates(text, target, timezone_name)
             updated = self.update_task(target["id"], TaskUpdateRequest(**updates))
@@ -99,6 +101,9 @@ class TaskService:
         if len(candidates) == 1:
             return candidates[0]
         if len(candidates) > 1:
+            deduped = self._dedupe_tasks_for_display(candidates)
+            if len(deduped) == 1:
+                return deduped[0]
             return None
         if context and context.get("last_referenced_task_ids"):
             task_id = context["last_referenced_task_ids"][0]
@@ -133,6 +138,13 @@ class TaskService:
         if task.get("google_event_id") or task.get("start_datetime"):
             self.google_sync.queue_sync(self.repository, task, "delete")
         return task
+
+    def delete_matching_tasks(self, user_id: UUID, target: dict) -> list[dict]:
+        candidates = self.repository.find_tasks(user_id, self._display_title(target))
+        matching = [task for task in candidates if self._task_signature(task) == self._task_signature(target)]
+        if not matching:
+            matching = [target]
+        return [self.delete_task(task["id"]) for task in matching]
 
     def _task_dict(self, user_id: UUID, parsed: ParseResult) -> dict:
         return {
@@ -268,3 +280,12 @@ class TaskService:
         if task.get("due_date"):
             return "deadline_task"
         return "backlog_task"
+
+    @classmethod
+    def _task_signature(cls, task: dict) -> tuple:
+        return (
+            cls._display_title(task),
+            task.get("due_date"),
+            task.get("start_datetime"),
+            task.get("end_datetime"),
+        )
