@@ -10,6 +10,17 @@ from app.schemas import SlackEventRequest
 router = APIRouter(prefix="/slack", tags=["slack"])
 
 
+def _should_ignore_message_event(event: dict, bot_user_id: str) -> bool:
+    if event.get("type") != "message":
+        return False
+    if event.get("bot_id"):
+        return True
+    text = event.get("text", "")
+    if bot_user_id and f"<@{bot_user_id}>" in text:
+        return True
+    return False
+
+
 @router.post("/events/message")
 def slack_message(payload: SlackEventRequest, repository=Depends(get_repository)):
     return build_slack_service(repository).handle_message(payload.slackWorkspaceId, payload.slackChannelId, payload.slackUserId, payload.text)
@@ -33,6 +44,8 @@ async def slack_events(
     if event_id and not repository.mark_slack_event_processed(event_id):
         return {"ok": True, "duplicate": True}
     event = payload.get("event", {})
+    if _should_ignore_message_event(event, slack_client.settings.slack_bot_user_id):
+        return {"ok": True, "ignored": "message_event_for_app_mention"}
     if event.get("type") in {"message", "app_mention"} and not event.get("bot_id"):
         return build_slack_service(repository).handle_message(payload.get("team_id", ""), event["channel"], event["user"], event.get("text", ""))
     return {"ok": True}

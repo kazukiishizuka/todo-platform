@@ -1,6 +1,7 @@
-﻿import time
+import time
 import unittest
 
+from app.api.routes.slack import _should_ignore_message_event
 from app.config import Settings
 from app.services.google_auth import GoogleAuthService
 from app.services.slack_auth import SlackAuthService
@@ -36,6 +37,14 @@ class ExternalServiceTests(unittest.TestCase):
         self.assertIn("client_id=12345.67890", url)
         self.assertIn("redirect_uri=https%3A%2F%2Fexample.ngrok-free.app%2Fauth%2Fslack%2Fcallback", url)
         self.assertIn("state=user-123", url)
+
+    def test_ignore_message_event_when_it_is_same_mention(self):
+        event = {"type": "message", "text": "<@U0AR9GMMTSL> 今日のタスク教えて"}
+        self.assertTrue(_should_ignore_message_event(event, "U0AR9GMMTSL"))
+
+    def test_keep_app_mention_event(self):
+        event = {"type": "app_mention", "text": "<@U0AR9GMMTSL> 今日のタスク教えて"}
+        self.assertFalse(_should_ignore_message_event(event, "U0AR9GMMTSL"))
 
 
 if __name__ == "__main__":
