@@ -30,7 +30,7 @@ async def slack_events(
     if not slack_client.verify_signature(x_slack_request_timestamp, x_slack_signature, body):
         raise HTTPException(status_code=401, detail="invalid slack signature")
     event = payload.get("event", {})
-    if event.get("type") == "message" and not event.get("bot_id"):
+    if event.get("type") in {"message", "app_mention"} and not event.get("bot_id"):
         return build_slack_service(repository).handle_message(payload.get("team_id", ""), event["channel"], event["user"], event.get("text", ""))
     return {"ok": True}
 
