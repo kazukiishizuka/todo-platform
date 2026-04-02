@@ -92,6 +92,13 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(response["replace_original"], False)
         self.assertIn("完了", response["text"])
 
+    def test_slack_service_does_not_attach_buttons_to_delete_reply(self):
+        self.task_service.parse_and_create(self.user_id, "chat", "room-1", "明日15時に歯医者", "Asia/Tokyo")
+        service = SlackBotService(self.repository, self.task_service, self.slack_client)
+        message = service._to_slack_message(self.task_service.parse_and_create(self.user_id, "chat", "room-1", "歯医者消して", "Asia/Tokyo"))
+        self.assertEqual(message.blocks, [])
+        self.assertIn("削除", message.text)
+
 
 if __name__ == "__main__":
     unittest.main()

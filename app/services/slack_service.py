@@ -63,8 +63,7 @@ class SlackBotService:
             text = f"{result.task.title} を登録しました。Google同期: {result.googleSync['status']}"
             return ReminderMessage(text=text, blocks=self._task_action_blocks(result.task.id, result.task.title))
         if isinstance(result, dict) and result.get("status") == "ok":
-            task = result.get("task")
-            return ReminderMessage(text=result.get("message", "処理しました。"), blocks=self._task_action_blocks(task.id, task.title) if task else [])
+            return ReminderMessage(text=result.get("message", "処理しました。"), blocks=[])
         if hasattr(result, "status") and result.status == "needs_confirmation":
             return ReminderMessage(text=result.message or "確認が必要です。", blocks=[])
         return ReminderMessage(text=getattr(result, "message", None) or result.get("message", "解釈できませんでした。"), blocks=[])
