@@ -62,7 +62,7 @@ class TaskService:
         parsed = parsed or self.parser.parse(text, timezone_name)
         if parsed.intent == "query":
             scope, status, query = self._query_params_from_text(text)
-            tasks = self.repository.list_tasks(user_id, status=status, scope=scope, q=query)
+            tasks = self._dedupe_tasks_for_display(self.repository.list_tasks(user_id, status=status, scope=scope, q=query))
             self.repository.save_context(
                 user_id,
                 channel_type,
@@ -162,10 +162,20 @@ class TaskService:
         return [{"label": parsed.original_text, "value": "candidate_1"}]
 
     @staticmethod
-    def _to_response(task: dict) -> TaskResponse:
+    def _display_title(task: dict) -> str:
+        import re
+
+        title = task["title"]
+        title = re.sub(r"<@[^>]+>", " ", title)
+        title = re.sub(r"\s+(から|まで)\s+", " ", title)
+        title = re.sub(r"\s+", " ", title).strip(" 。")
+        return title or task["title"]
+
+    @classmethod
+    def _to_response(cls, task: dict) -> TaskResponse:
         return TaskResponse(
             id=task["id"],
-            title=task["title"],
+            title=cls._display_title(task),
             description=task.get("description"),
             status=task["status"],
             dueDate=task.get("due_date"),
@@ -200,6 +210,27 @@ class TaskService:
             text = text.replace(marker, "")
         query = text.strip() or None
         return scope, status, query
+
+    @staticmethod
+    def _dedupe_tasks_for_display(tasks: list[dict]) -> list[dict]:
+        unique_tasks: list[dict] = []
+        seen_signatures: dict[tuple, datetime] = {}
+        for task in tasks:
+            signature = (
+                task.get("title"),
+                task.get("status"),
+                task.get("due_date"),
+                task.get("start_datetime"),
+                task.get("end_datetime"),
+                task.get("original_text"),
+            )
+            created_at = task.get("created_at") or datetime.now(timezone.utc)
+            previous = seen_signatures.get(signature)
+            if previous and abs((created_at - previous).total_seconds()) <= 600:
+                continue
+            seen_signatures[signature] = created_at
+            unique_tasks.append(task)
+        return unique_tasks
 
     def _extract_updates(self, text: str, target: dict, timezone_name: str) -> dict:
         parsed = self.parser.parse(text, timezone_name)

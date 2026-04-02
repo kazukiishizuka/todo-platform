@@ -40,6 +40,17 @@ class TaskServiceTests(unittest.TestCase):
         self.assertEqual(result["task"].startDatetime.hour, 16)
         self.assertEqual(self.repository.get_task(create_result.task.id)["start_datetime"].hour, 16)
 
+    def test_query_dedupes_accidental_duplicates(self):
+        self.service.parse_and_create(self.user_id, "chat", "room-1", "今日15時に面談", "Asia/Tokyo")
+        self.service.parse_and_create(self.user_id, "chat", "room-1", "今日15時に面談", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "chat", "room-1", "今日のタスク教えて", "Asia/Tokyo")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(len(result["items"]), 1)
+
+    def test_repository_marks_processed_slack_events_once(self):
+        self.assertTrue(self.repository.mark_slack_event_processed("Ev123"))
+        self.assertFalse(self.repository.mark_slack_event_processed("Ev123"))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -49,7 +49,7 @@ class NaturalLanguageParser:
 
     def parse(self, text: str, timezone_name: str, now: datetime | None = None) -> ParseResult:
         now = now or datetime.now(ZoneInfo(timezone_name))
-        lowered = text.strip()
+        lowered = self._normalize_text(text)
         intent = self._detect_intent(lowered)
         parsed = self._extract_datetime(lowered, timezone_name, now)
         title = self._extract_title(lowered)
@@ -78,6 +78,24 @@ class NaturalLanguageParser:
             parse_status=parse_status,
             intent=intent,
         )
+
+    def _normalize_text(self, text: str) -> str:
+        import re
+
+        normalized = text.strip()
+        normalized = re.sub(r"<@[^>]+>", " ", normalized)
+        normalized = normalized.replace("&nbsp;", " ")
+        normalized = re.sub(r"\s+", " ", normalized)
+        return normalized.strip()
+
+    def clean_title(self, text: str) -> str:
+        import re
+
+        cleaned = self._normalize_text(text)
+        cleaned = re.sub(r"^(から|まで)\s*", "", cleaned)
+        cleaned = re.sub(r"\s+(から|まで)$", "", cleaned)
+        cleaned = re.sub(r"\s+", " ", cleaned).strip(" 。")
+        return cleaned
 
     def _detect_intent(self, text: str) -> str:
         if any(token in text for token in ["完了", "終わった"]):
@@ -215,6 +233,7 @@ class NaturalLanguageParser:
 
         cleaned = text
         patterns = [
+            r"<@[^>]+>",
             r"\d{4}/\d{1,2}/\d{1,2}",
             r"\d{1,2}/\d{1,2}",
             r"\d{1,2}月\d{1,2}日",
@@ -223,13 +242,12 @@ class NaturalLanguageParser:
             r"(午前|午後)?\s*\d{1,2}(?::\d{2})?時?(?:\d{1,2}分|半)?",
             r"\d{1,2}:\d{2}",
             r"毎日|平日|毎週[月火水木金土日]曜|毎月1日",
-            r"に|を|の",
+            r"に|を|の|から|まで",
             r"教えて|見せて|完了|終わった|消して|変更|して|変えて|取り消し|ある？|一覧|表示",
         ]
         for pattern in patterns:
             cleaned = re.sub(pattern, " ", cleaned)
-        cleaned = re.sub(r"\s+", " ", cleaned).strip(" 。")
-        return cleaned
+        return self.clean_title(cleaned)
 
     @staticmethod
     def _determine_status(parsed: ParsedDateTime, ambiguity_flags: list[str]) -> str:

@@ -18,6 +18,7 @@ class InMemoryTaskRepository:
         self.google_connections: dict[str, dict] = {}
         self.slack_connections: dict[str, dict] = {}
         self.jobs: dict[str, dict] = {}
+        self.processed_slack_events: set[str] = set()
 
     def create_task(self, task: dict) -> dict:
         task_id = str(task.get("id", uuid4()))
@@ -150,3 +151,9 @@ class InMemoryTaskRepository:
         if status == "queued":
             job["retry_count"] += 1
         job["updated_at"] = datetime.now(timezone.utc)
+
+    def mark_slack_event_processed(self, event_id: str) -> bool:
+        if event_id in self.processed_slack_events:
+            return False
+        self.processed_slack_events.add(event_id)
+        return True

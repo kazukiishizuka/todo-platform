@@ -7,7 +7,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import ConversationContext, GoogleConnection, JobQueueItem, ReminderRule, SlackConnection, SlackMessageLog, Task, TaskParseLog, TaskSyncLog
+from app.models import ConversationContext, GoogleConnection, JobQueueItem, ProcessedSlackEvent, ReminderRule, SlackConnection, SlackMessageLog, Task, TaskParseLog, TaskSyncLog
 
 
 class SqlAlchemyTaskRepository:
@@ -243,6 +243,15 @@ class SqlAlchemyTaskRepository:
         model.updated_at = datetime.now(timezone.utc)
         self.session.add(model)
         self.session.commit()
+
+    def mark_slack_event_processed(self, event_id: str) -> bool:
+        stmt = select(ProcessedSlackEvent).where(ProcessedSlackEvent.event_id == event_id)
+        existing = self.session.scalars(stmt).first()
+        if existing is not None:
+            return False
+        self.session.add(ProcessedSlackEvent(id=str(uuid4()), event_id=event_id, created_at=datetime.now(timezone.utc)))
+        self.session.commit()
+        return True
 
     @staticmethod
     def _task_to_dict(model: Task) -> dict:

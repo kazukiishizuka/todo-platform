@@ -119,6 +119,14 @@ class SlackMessageLog(Base):
     sent_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class ProcessedSlackEvent(Base):
+    __tablename__ = "processed_slack_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    event_id: Mapped[str] = mapped_column(Text, nullable=False, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class ConversationContext(Base):
     __tablename__ = "conversation_contexts"
 
