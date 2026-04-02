@@ -20,7 +20,17 @@ class SlackBotService:
         user_id = self.resolve_user_id(workspace_id, slack_user_id)
         result = self.task_service.parse_and_create(user_id, "slack", channel_id, text, "Asia/Tokyo")
         message = self._to_slack_message(result)
-        self.repository.log_slack_message({"user_id": str(user_id), "slack_channel_id": channel_id, "message_type": "conversation_reply", "payload_json": message.model_dump(), "status": "queued", "error_message": None, "sent_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc)})
+        self.repository.log_slack_message(
+            {
+                "user_id": str(user_id),
+                "slack_channel_id": channel_id,
+                "message_type": "conversation_reply",
+                "payload_json": message.model_dump(),
+                "status": "queued",
+                "error_message": None,
+                "sent_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc),
+            }
+        )
         self.repository.enqueue_job("slack_post", {"channelId": channel_id, "text": message.text, "blocks": message.blocks})
         return {"userId": str(user_id), "message": message.model_dump()}
 
@@ -28,14 +38,20 @@ class SlackBotService:
         operation, task_id = action_id.split(":", 1)
         if operation == "complete":
             task = self.task_service.complete_task(task_id)
-            return {"text": f"{task['title']} を完了にしました。"}
+            return self._interaction_response(f"「{task['title']}」を完了にしました。")
         if operation == "delete":
             task = self.task_service.delete_task(task_id)
-            return {"text": f"{task['title']} を削除しました。"}
+            return self._interaction_response(f"「{task['title']}」を削除しました。")
         if operation == "snooze":
             task = self.task_service.update_task(task_id, TaskUpdateRequest(status="snoozed"))
-            return {"text": f"{task['title']} を延期しました。"}
-        return {"text": "未対応の操作です。"}
+            return self._interaction_response(f"「{task['title']}」を延期しました。")
+        if operation == "detail":
+            task = self.task_service.repository.get_task(task_id)
+            if not task:
+                return self._interaction_response("対象タスクが見つかりませんでした。")
+            task_response = self.task_service._to_response(task)
+            return self._interaction_response(self._format_task_line(task_response))
+        return self._interaction_response("未対応の操作です。")
 
     def _to_slack_message(self, result) -> ReminderMessage:
         if isinstance(result, dict) and result.get("items") is not None:
@@ -54,8 +70,27 @@ class SlackBotService:
         return ReminderMessage(text=getattr(result, "message", None) or result.get("message", "解釈できませんでした。"))
 
     @staticmethod
+    def _interaction_response(text: str) -> dict:
+        return {
+            "response_type": "ephemeral",
+            "replace_original": False,
+            "delete_original": False,
+            "text": text,
+        }
+
+    @staticmethod
     def _task_action_blocks(task_id, title: str) -> list[dict]:
-        return [{"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "完了"}, "action_id": f"complete:{task_id}"}, {"type": "button", "text": {"type": "plain_text", "text": "延期"}, "action_id": f"snooze:{task_id}"}, {"type": "button", "text": {"type": "plain_text", "text": "削除"}, "action_id": f"delete:{task_id}"}, {"type": "button", "text": {"type": "plain_text", "text": "詳細"}, "action_id": f"detail:{task_id}"}]}]
+        return [
+            {
+                "type": "actions",
+                "elements": [
+                    {"type": "button", "text": {"type": "plain_text", "text": "完了"}, "action_id": f"complete:{task_id}"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "延期"}, "action_id": f"snooze:{task_id}"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "削除"}, "action_id": f"delete:{task_id}"},
+                    {"type": "button", "text": {"type": "plain_text", "text": "詳細"}, "action_id": f"detail:{task_id}"},
+                ],
+            }
+        ]
 
     @staticmethod
     def _format_task_line(task) -> str:

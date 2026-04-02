@@ -82,6 +82,14 @@ class WorkerTests(unittest.TestCase):
         message = service._to_slack_message(self.task_service.parse_and_create(self.user_id, "chat", "room-1", "明日のタスク教えて", "Asia/Tokyo"))
         self.assertEqual(message.text.count("ミーティング"), 1)
 
+    def test_slack_interaction_returns_ephemeral_feedback(self):
+        result = self.task_service.parse_and_create(self.user_id, "chat", "room-1", "明日15時に歯医者", "Asia/Tokyo")
+        service = SlackBotService(self.repository, self.task_service, self.slack_client)
+        response = service.handle_interaction(f"complete:{result.task.id}")
+        self.assertEqual(response["response_type"], "ephemeral")
+        self.assertEqual(response["replace_original"], False)
+        self.assertIn("完了", response["text"])
+
 
 if __name__ == "__main__":
     unittest.main()
