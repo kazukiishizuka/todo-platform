@@ -39,12 +39,13 @@ class SlackClient:
         return ok
 
     def post_message(self, channel_id: str, text: str, blocks: list[dict] | None = None) -> dict:
+        bot_token = (self.settings.slack_bot_token or "").strip()
         payload = {"channel": channel_id, "text": text}
         if blocks:
             payload["blocks"] = blocks
         data = json.dumps(payload).encode()
         req = request.Request(self.POST_MESSAGE_URL, data=data, method="POST")
-        req.add_header("Authorization", f"Bearer {self.settings.slack_bot_token}")
+        req.add_header("Authorization", f"Bearer {bot_token}")
         req.add_header("Content-Type", "application/json; charset=utf-8")
         try:
             with request.urlopen(req, timeout=15) as response:
