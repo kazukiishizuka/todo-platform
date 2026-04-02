@@ -255,6 +255,24 @@ class SqlAlchemyTaskRepository:
         self.session.commit()
         return True
 
+    def has_recent_slack_delivery(self, channel_id: str, text: str, blocks: list[dict] | None = None, window_seconds: int = 60) -> bool:
+        since = datetime.now(timezone.utc) - timedelta(seconds=window_seconds)
+        stmt = (
+            select(SlackMessageLog)
+            .where(
+                SlackMessageLog.slack_channel_id == channel_id,
+                SlackMessageLog.status == "sent",
+                SlackMessageLog.sent_at >= since,
+            )
+            .order_by(SlackMessageLog.sent_at.desc())
+        )
+        target_blocks = blocks or []
+        for log in self.session.scalars(stmt).all():
+            payload = log.payload_json or {}
+            if payload.get("text") == text and (payload.get("blocks") or []) == target_blocks:
+                return True
+        return False
+
     @staticmethod
     def _task_to_dict(model: Task) -> dict:
         return {

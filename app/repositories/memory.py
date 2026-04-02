@@ -157,3 +157,18 @@ class InMemoryTaskRepository:
             return False
         self.processed_slack_events.add(event_id)
         return True
+
+    def has_recent_slack_delivery(self, channel_id: str, text: str, blocks: list[dict] | None = None, window_seconds: int = 60) -> bool:
+        now = datetime.now(timezone.utc)
+        target_blocks = blocks or []
+        for log in reversed(self.slack_logs):
+            if log.get("status") != "sent":
+                continue
+            if log.get("slack_channel_id") != channel_id:
+                continue
+            if (now - log["sent_at"]).total_seconds() > window_seconds:
+                continue
+            payload = log.get("payload_json") or {}
+            if payload.get("text") == text and (payload.get("blocks") or []) == target_blocks:
+                return True
+        return False

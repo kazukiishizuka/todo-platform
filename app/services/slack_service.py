@@ -39,7 +39,8 @@ class SlackBotService:
 
     def _to_slack_message(self, result) -> ReminderMessage:
         if isinstance(result, dict) and result.get("items") is not None:
-            lines = [f"{index + 1}. {self._format_task_line(task)}" for index, task in enumerate(result["items"])]
+            unique_lines = list(dict.fromkeys(self._format_task_line(task) for task in result["items"]))
+            lines = [f"{index + 1}. {line}" for index, line in enumerate(unique_lines)]
             text = "\n".join(lines) if lines else "該当するタスクはありません。"
             return ReminderMessage(text=text)
         if hasattr(result, "status") and result.status == "confirmed" and result.task:
