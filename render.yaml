@@ -32,6 +32,8 @@
         sync: false
       - key: TODO_SLACK_BOT_USER_ID
         sync: false
+      - key: TODO_INTERNAL_TOKEN
+        sync: false
       - key: TODO_DEFAULT_TIMEZONE
         value: Asia/Tokyo
 
@@ -40,7 +42,12 @@
     runtime: python
     schedule: '*/2 * * * *'
     buildCommand: pip install -e .
-    startCommand: python -c "import os,urllib.request; urllib.request.urlopen(urllib.request.Request(os.environ['TODO_BASE_URL'] + '/internal/jobs/run', method='POST', headers={'X-Internal-Token': os.environ['TODO_INTERNAL_TOKEN']})).read()"
+    startCommand: >-
+      python -c "import os, urllib.request; urllib.request.urlopen(urllib.request.Request(
+      os.environ['TODO_BASE_URL'] + '/internal/jobs/run',
+      method='POST',
+      headers={'X-Internal-Token': os.environ['TODO_INTERNAL_TOKEN']}
+      )).read()"
     envVars:
       - key: TODO_BASE_URL
         sync: false
@@ -52,7 +59,12 @@
     runtime: python
     schedule: '*/5 * * * *'
     buildCommand: pip install -e .
-    startCommand: python -c "import os,urllib.request; urllib.request.urlopen(urllib.request.Request(os.environ['TODO_BASE_URL'] + '/internal/reminders/run', method='POST', headers={'X-Internal-Token': os.environ['TODO_INTERNAL_TOKEN']})).read()"
+    startCommand: >-
+      python -c "import os, urllib.request; urllib.request.urlopen(urllib.request.Request(
+      os.environ['TODO_BASE_URL'] + '/internal/reminders/run',
+      method='POST',
+      headers={'X-Internal-Token': os.environ['TODO_INTERNAL_TOKEN']}
+      )).read()"
     envVars:
       - key: TODO_BASE_URL
         sync: false
