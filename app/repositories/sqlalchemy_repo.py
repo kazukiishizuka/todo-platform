@@ -77,7 +77,9 @@ class SqlAlchemyTaskRepository:
     def _scope_condition(self, scope: str):
         today = datetime.now(timezone.utc).date()
         if scope == "today":
-            return or_(Task.due_date == today, Task.start_datetime >= datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc), Task.start_datetime < datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc))
+            start = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
+            end = datetime.combine(today + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+            return or_(Task.due_date == today, and_(Task.start_datetime >= start, Task.start_datetime < end))
         if scope == "tomorrow":
             target = today + timedelta(days=1)
             return or_(Task.due_date == target, and_(Task.start_datetime >= datetime.combine(target, datetime.min.time(), tzinfo=timezone.utc), Task.start_datetime < datetime.combine(target + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)))

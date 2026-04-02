@@ -47,6 +47,23 @@ class TaskServiceTests(unittest.TestCase):
         self.assertEqual(result["status"], "ok")
         self.assertEqual(len(result["items"]), 1)
 
+    def test_query_cleans_dirty_titles_for_display(self):
+        self.repository.create_task(
+            {
+                "user_id": self.user_id,
+                "title": "からミーティング",
+                "original_text": "<@U0AR9GMMTSL> 明日11時からミーティング",
+                "status": "pending",
+                "timezone": "Asia/Tokyo",
+                "due_date": None,
+                "start_datetime": None,
+                "end_datetime": None,
+                "is_all_day": False,
+            }
+        )
+        result = self.service.handle_intent(self.user_id, "chat", "room-1", "一覧", "Asia/Tokyo")
+        self.assertEqual(result["items"][0].title, "ミーティング")
+
     def test_repository_marks_processed_slack_events_once(self):
         self.assertTrue(self.repository.mark_slack_event_processed("Ev123"))
         self.assertFalse(self.repository.mark_slack_event_processed("Ev123"))

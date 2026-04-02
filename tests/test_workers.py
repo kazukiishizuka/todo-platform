@@ -4,6 +4,7 @@ from uuid import uuid4
 from app.repositories.memory import InMemoryTaskRepository
 from app.services.google_sync import GoogleSyncService
 from app.services.parser import NaturalLanguageParser
+from app.services.slack_service import SlackBotService
 from app.services.task_service import TaskService
 from app.workers.job_worker import JobWorker
 from app.workers.reminder_worker import ReminderWorker
@@ -39,6 +40,13 @@ class WorkerTests(unittest.TestCase):
         results = worker.run_once()
         self.assertEqual(results[0]["status"], "completed")
         self.assertEqual(self.slack_client.messages[0]["text"], "hello")
+
+    def test_slack_service_formats_query_results_with_time(self):
+        self.task_service.parse_and_create(self.user_id, "chat", "room-1", "今日15時に面談", "Asia/Tokyo")
+        service = SlackBotService(self.repository, self.task_service, self.slack_client)
+        message = service._to_slack_message(self.task_service.parse_and_create(self.user_id, "chat", "room-1", "今日のタスク教えて", "Asia/Tokyo"))
+        self.assertIn("15:00", message.text)
+        self.assertIn("面談", message.text)
 
 
 if __name__ == "__main__":

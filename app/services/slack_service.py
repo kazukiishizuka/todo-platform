@@ -1,5 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+from zoneinfo import ZoneInfo
 from uuid import NAMESPACE_URL, UUID, uuid5
 
 from app.schemas import ReminderMessage, TaskUpdateRequest
@@ -38,7 +39,7 @@ class SlackBotService:
 
     def _to_slack_message(self, result) -> ReminderMessage:
         if isinstance(result, dict) and result.get("items") is not None:
-            lines = [f"{index + 1}. {task.title}" for index, task in enumerate(result["items"])]
+            lines = [f"{index + 1}. {self._format_task_line(task)}" for index, task in enumerate(result["items"])]
             text = "\n".join(lines) if lines else "該当するタスクはありません。"
             return ReminderMessage(text=text)
         if hasattr(result, "status") and result.status == "confirmed" and result.task:
@@ -54,3 +55,12 @@ class SlackBotService:
     @staticmethod
     def _task_action_blocks(task_id, title: str) -> list[dict]:
         return [{"type": "actions", "elements": [{"type": "button", "text": {"type": "plain_text", "text": "完了"}, "action_id": f"complete:{task_id}"}, {"type": "button", "text": {"type": "plain_text", "text": "延期"}, "action_id": f"snooze:{task_id}"}, {"type": "button", "text": {"type": "plain_text", "text": "削除"}, "action_id": f"delete:{task_id}"}, {"type": "button", "text": {"type": "plain_text", "text": "詳細"}, "action_id": f"detail:{task_id}"}]}]
+
+    @staticmethod
+    def _format_task_line(task) -> str:
+        if task.startDatetime:
+            local_dt = task.startDatetime.astimezone(ZoneInfo(task.timezone))
+            return f"{local_dt.strftime('%m/%d %H:%M')} {task.title}"
+        if task.dueDate:
+            return f"{task.dueDate.strftime('%m/%d')} {task.title}"
+        return task.title

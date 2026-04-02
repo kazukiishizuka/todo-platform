@@ -167,6 +167,7 @@ class TaskService:
 
         title = task["title"]
         title = re.sub(r"<@[^>]+>", " ", title)
+        title = re.sub(r"^\s*(から|まで)\s*", "", title)
         title = re.sub(r"\s+(から|まで)\s+", " ", title)
         title = re.sub(r"\s+", " ", title).strip(" 。")
         return title or task["title"]
@@ -214,21 +215,18 @@ class TaskService:
     @staticmethod
     def _dedupe_tasks_for_display(tasks: list[dict]) -> list[dict]:
         unique_tasks: list[dict] = []
-        seen_signatures: dict[tuple, datetime] = {}
+        seen_signatures: set[tuple] = set()
         for task in tasks:
             signature = (
-                task.get("title"),
+                TaskService._display_title(task),
                 task.get("status"),
                 task.get("due_date"),
                 task.get("start_datetime"),
                 task.get("end_datetime"),
-                task.get("original_text"),
             )
-            created_at = task.get("created_at") or datetime.now(timezone.utc)
-            previous = seen_signatures.get(signature)
-            if previous and abs((created_at - previous).total_seconds()) <= 600:
+            if signature in seen_signatures:
                 continue
-            seen_signatures[signature] = created_at
+            seen_signatures.add(signature)
             unique_tasks.append(task)
         return unique_tasks
 
