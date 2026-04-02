@@ -4,9 +4,13 @@ import hashlib
 import hmac
 import json
 import time
+import logging
 from urllib import request
 
 from app.config import Settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class SlackClient:
@@ -17,12 +21,20 @@ class SlackClient:
 
     def verify_signature(self, timestamp: str, signature: str, body: bytes) -> bool:
         if not self.settings.slack_signing_secret:
+            logger.warning("Slack signing secret is empty")
+            return False
+        if not timestamp or not signature:
+            logger.warning("Missing Slack signature headers timestamp=%s signature_present=%s", timestamp, bool(signature))
             return False
         if abs(time.time() - int(timestamp)) > 60 * 5:
+            logger.warning("Slack request timestamp too old timestamp=%s", timestamp)
             return False
         basestring = f"v0:{timestamp}:{body.decode()}".encode()
         digest = "v0=" + hmac.new(self.settings.slack_signing_secret.encode(), basestring, hashlib.sha256).hexdigest()
-        return hmac.compare_digest(digest, signature)
+        ok = hmac.compare_digest(digest, signature)
+        if not ok:
+            logger.warning("Slack signature mismatch computed_prefix=%s provided_prefix=%s", digest[:16], signature[:16])
+        return ok
 
     def post_message(self, channel_id: str, text: str, blocks: list[dict] | None = None) -> dict:
         payload = {"channel": channel_id, "text": text}
