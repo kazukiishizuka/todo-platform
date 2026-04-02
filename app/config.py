@@ -5,6 +5,14 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 
+def normalize_database_url(database_url: str) -> str:
+    if database_url.startswith("postgres://"):
+        return "postgresql+psycopg://" + database_url[len("postgres://") :]
+    if database_url.startswith("postgresql://") and "+psycopg" not in database_url:
+        return "postgresql+psycopg://" + database_url[len("postgresql://") :]
+    return database_url
+
+
 @dataclass
 class Settings:
     app_name: str = "todo-platform"
@@ -35,7 +43,7 @@ class Settings:
 def get_settings() -> Settings:
     return Settings(
         app_name=os.getenv("TODO_APP_NAME", "todo-platform"),
-        database_url=os.getenv("TODO_DATABASE_URL", "sqlite+pysqlite:///:memory:"),
+        database_url=normalize_database_url(os.getenv("TODO_DATABASE_URL", "sqlite+pysqlite:///:memory:")),
         default_timezone=os.getenv("TODO_DEFAULT_TIMEZONE", "Asia/Tokyo"),
         default_event_duration_minutes=int(os.getenv("TODO_DEFAULT_EVENT_DURATION_MINUTES", "60")),
         sync_time_less_tasks_to_google=os.getenv("TODO_SYNC_TIME_LESS_TASKS_TO_GOOGLE", "false").lower() == "true",
