@@ -64,4 +64,4 @@ class SlackBotService:
             return f"{local_dt.strftime('%m/%d %H:%M')} {task.title}"
         if task.dueDate:
             return f"{task.dueDate.strftime('%m/%d')} {task.title}"
-        return task.title
+        return f"期限未設定 {task.title}"

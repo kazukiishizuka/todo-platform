@@ -64,6 +64,9 @@ class NaturalLanguageParser:
             ambiguity_flags.append("title_inferred_from_original")
             confidence -= 0.05
         parse_status = self._determine_status(parsed, ambiguity_flags)
+        if intent == "create" and parse_status == "on_hold" and title and not ambiguity_flags:
+            parse_status = "confirmed"
+            confidence = max(confidence, 0.7)
         return ParseResult(
             original_text=text,
             title=title,

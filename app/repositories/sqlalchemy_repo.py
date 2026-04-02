@@ -93,6 +93,8 @@ class SqlAlchemyTaskRepository:
             return or_(and_(Task.due_date >= start, Task.due_date < end), and_(Task.start_datetime >= datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc), Task.start_datetime < datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc)))
         if scope == "overdue":
             return and_(Task.status == "pending", Task.due_date < today)
+        if scope == "backlog":
+            return and_(Task.due_date.is_(None), Task.start_datetime.is_(None))
         return True
 
     def log_parse(self, payload: dict) -> None:

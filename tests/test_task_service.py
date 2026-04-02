@@ -25,6 +25,14 @@ class TaskServiceTests(unittest.TestCase):
         result = self.service.parse_and_create(self.user_id, "chat", "room-1", "今日のタスク教えて", "Asia/Tokyo")
         self.assertEqual(result["status"], "ok")
         self.assertEqual(len(result["items"]), 1)
+        self.assertEqual(result["items"][0].taskType, "event")
+
+    def test_create_backlog_task_without_date(self):
+        result = self.service.parse_and_create(self.user_id, "chat", "room-1", "引っ越し準備", "Asia/Tokyo")
+        self.assertEqual(result.status, "confirmed")
+        self.assertEqual(result.task.taskType, "backlog_task")
+        self.assertIsNone(result.task.dueDate)
+        self.assertIsNone(result.task.startDatetime)
 
     def test_complete_by_title(self):
         create_result = self.service.parse_and_create(self.user_id, "chat", "room-1", "4月5日15時にレポート提出", "Asia/Tokyo")
@@ -63,6 +71,15 @@ class TaskServiceTests(unittest.TestCase):
         )
         result = self.service.handle_intent(self.user_id, "chat", "room-1", "一覧", "Asia/Tokyo")
         self.assertEqual(result["items"][0].title, "ミーティング")
+
+    def test_query_backlog_tasks(self):
+        self.service.parse_and_create(self.user_id, "chat", "room-1", "引っ越し準備", "Asia/Tokyo")
+        self.service.parse_and_create(self.user_id, "chat", "room-1", "明日15時に歯医者", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "chat", "room-1", "バックログ見せて", "Asia/Tokyo")
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(len(result["items"]), 1)
+        self.assertEqual(result["items"][0].taskType, "backlog_task")
+        self.assertEqual(result["items"][0].title, "引っ越し準備")
 
     def test_repository_marks_processed_slack_events_once(self):
         self.assertTrue(self.repository.mark_slack_event_processed("Ev123"))

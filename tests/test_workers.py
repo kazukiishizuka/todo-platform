@@ -68,6 +68,13 @@ class WorkerTests(unittest.TestCase):
         self.assertIn("15:00", message.text)
         self.assertIn("面談", message.text)
 
+    def test_slack_service_formats_backlog_tasks(self):
+        self.task_service.parse_and_create(self.user_id, "chat", "room-1", "引っ越し準備", "Asia/Tokyo")
+        service = SlackBotService(self.repository, self.task_service, self.slack_client)
+        message = service._to_slack_message(self.task_service.parse_and_create(self.user_id, "chat", "room-1", "バックログ見せて", "Asia/Tokyo"))
+        self.assertIn("期限未設定", message.text)
+        self.assertIn("引っ越し準備", message.text)
+
     def test_slack_service_dedupes_duplicate_lines(self):
         self.task_service.parse_and_create(self.user_id, "chat", "room-1", "明日11時にミーティング", "Asia/Tokyo")
         self.task_service.parse_and_create(self.user_id, "chat", "room-1", "明日11時にミーティング", "Asia/Tokyo")

@@ -34,6 +34,7 @@ except ModuleNotFoundError:
 
 TaskStatus = Literal["pending", "completed", "canceled", "deleted", "snoozed"]
 ParseStatus = Literal["confirmed", "needs_confirmation", "on_hold"]
+TaskType = Literal["event", "deadline_task", "backlog_task"]
 
 
 class ParseResult(BaseModel):
@@ -65,6 +66,7 @@ class TaskResponse(BaseModel):
     title: str
     description: str | None = None
     status: TaskStatus
+    taskType: TaskType = "backlog_task"
     dueDate: date | None = None
     startDatetime: datetime | None = None
     endDatetime: datetime | None = None

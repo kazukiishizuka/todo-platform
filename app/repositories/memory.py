@@ -68,6 +68,8 @@ class InMemoryTaskRepository:
             return [task for task in items if self._task_date(task) and self._task_date(task).month == today.month and self._task_date(task).year == today.year]
         if scope == "overdue":
             return [task for task in items if task.get("status") == "pending" and self._task_date(task) and self._task_date(task) < today]
+        if scope == "backlog":
+            return [task for task in items if task.get("due_date") is None and task.get("start_datetime") is None]
         return list(items)
 
     @staticmethod

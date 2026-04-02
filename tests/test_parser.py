@@ -36,6 +36,13 @@ class ParserTests(unittest.TestCase):
         result = self.parser.parse("来週 会議", "Asia/Tokyo", now=self.now)
         self.assertEqual(result.parse_status, "on_hold")
 
+    def test_parse_backlog_task_without_date(self):
+        result = self.parser.parse("引っ越し準備", "Asia/Tokyo", now=self.now)
+        self.assertEqual(result.parse_status, "confirmed")
+        self.assertEqual(result.title, "引っ越し準備")
+        self.assertIsNone(result.start_datetime)
+        self.assertIsNone(result.due_date)
+
 
 if __name__ == "__main__":
     unittest.main()

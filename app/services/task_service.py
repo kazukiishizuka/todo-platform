@@ -179,6 +179,7 @@ class TaskService:
             title=cls._display_title(task),
             description=task.get("description"),
             status=task["status"],
+            taskType=cls._task_type(task),
             dueDate=task.get("due_date"),
             startDatetime=task.get("start_datetime"),
             endDatetime=task.get("end_datetime"),
@@ -201,13 +202,15 @@ class TaskService:
             scope = "this_week"
         elif "今月" in text:
             scope = "this_month"
+        elif "バックログ" in text or "中長期" in text or "期限未設定" in text:
+            scope = "backlog"
         if "未完了" in text:
             status = "pending"
         elif "完了済み" in text:
             status = "completed"
         elif "期限切れ" in text:
             scope = "overdue"
-        for marker in ["関連", "タスク", "予定", "見せて", "教えて", "だけ", "表示", "一覧", "今日", "明日", "今週", "今月", "未完了", "完了済み", "期限切れ", "ある？", "の"]:
+        for marker in ["関連", "タスク", "予定", "見せて", "教えて", "だけ", "表示", "一覧", "今日", "明日", "今週", "今月", "バックログ", "中長期", "期限未設定", "未完了", "完了済み", "期限切れ", "ある？", "の"]:
             text = text.replace(marker, "")
         query = text.strip() or None
         return scope, status, query
@@ -256,3 +259,11 @@ class TaskService:
     @staticmethod
     def _should_sync(task: dict) -> bool:
         return bool(task.get("start_datetime") or task.get("google_event_id"))
+
+    @staticmethod
+    def _task_type(task: dict) -> str:
+        if task.get("start_datetime"):
+            return "event"
+        if task.get("due_date"):
+            return "deadline_task"
+        return "backlog_task"
