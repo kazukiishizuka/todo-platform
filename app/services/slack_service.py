@@ -58,7 +58,7 @@ class SlackBotService:
             unique_lines = list(dict.fromkeys(self._format_task_line(task) for task in result["items"]))
             lines = [f"{index + 1}. {line}" for index, line in enumerate(unique_lines)]
             text = "\n".join(lines) if lines else "該当するタスクはありません。"
-            return ReminderMessage(text=text)
+            return ReminderMessage(text=text, blocks=[])
         if hasattr(result, "status") and result.status == "confirmed" and result.task:
             text = f"{result.task.title} を登録しました。Google同期: {result.googleSync['status']}"
             return ReminderMessage(text=text, blocks=self._task_action_blocks(result.task.id, result.task.title))
@@ -66,8 +66,8 @@ class SlackBotService:
             task = result.get("task")
             return ReminderMessage(text=result.get("message", "処理しました。"), blocks=self._task_action_blocks(task.id, task.title) if task else [])
         if hasattr(result, "status") and result.status == "needs_confirmation":
-            return ReminderMessage(text=result.message or "確認が必要です。")
-        return ReminderMessage(text=getattr(result, "message", None) or result.get("message", "解釈できませんでした。"))
+            return ReminderMessage(text=result.message or "確認が必要です。", blocks=[])
+        return ReminderMessage(text=getattr(result, "message", None) or result.get("message", "解釈できませんでした。"), blocks=[])
 
     @staticmethod
     def _interaction_response(text: str) -> dict:
