@@ -64,6 +64,13 @@ class TaskServiceTests(unittest.TestCase):
         self.assertEqual(result["task"].startDatetime.hour, 16)
         self.assertEqual(self.repository.get_task(create_result.task.id)["start_datetime"].hour, 16)
 
+    def test_explicit_delete_does_not_fall_back_to_context(self):
+        meeting = self.service.parse_and_create(self.user_id, "slack", "room-1", "明日11時にミーティング", "Asia/Tokyo")
+        self.service.parse_and_create(self.user_id, "slack", "room-1", "明日のタスク教えて", "Asia/Tokyo")
+        result = self.service.parse_and_create(self.user_id, "slack", "room-1", "歯医者消して", "Asia/Tokyo")
+        self.assertEqual(result["status"], "needs_confirmation")
+        self.assertEqual(self.repository.get_task(meeting.task.id)["status"], "pending")
+
     def test_query_dedupes_accidental_duplicates(self):
         self.service.parse_and_create(self.user_id, "chat", "room-1", "今日15時に面談", "Asia/Tokyo")
         self.service.parse_and_create(self.user_id, "chat", "room-1", "今日15時に面談", "Asia/Tokyo")

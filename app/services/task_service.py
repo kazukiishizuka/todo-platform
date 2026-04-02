@@ -89,7 +89,8 @@ class TaskService:
 
     def resolve_target_task(self, user_id: UUID, channel_type: str, channel_id: str, text: str):
         context = self.repository.get_context(user_id, channel_type, channel_id)
-        if any(token in text for token in ["それ", "さっき", "今日のやつ"]):
+        uses_context_reference = any(token in text for token in ["それ", "さっき", "今日のやつ"])
+        if uses_context_reference:
             if context and context.get("last_referenced_task_ids"):
                 task_id = context["last_referenced_task_ids"][0]
                 return self.repository.get_task(task_id)
@@ -105,7 +106,7 @@ class TaskService:
             if len(deduped) == 1:
                 return deduped[0]
             return None
-        if context and context.get("last_referenced_task_ids"):
+        if uses_context_reference and context and context.get("last_referenced_task_ids"):
             task_id = context["last_referenced_task_ids"][0]
             return self.repository.get_task(task_id)
         return None
